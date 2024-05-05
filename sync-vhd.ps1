@@ -1,4 +1,4 @@
-Param(
+param(
     [switch]$NoUpdate = $false,
     [string]$destinationDrive,
     [string]$sourceDrive
@@ -9,38 +9,50 @@ Param(
 Write-Host "This script could break a lot. The author cannot be held responsible if you break anything. Use at your own risk."
 
 $disk2VHDUrl = "https://live.sysinternals.com/disk2vhd.exe" 
+$disk2VHD64Url = "https://live.sysinternals.com/disk2vhd64.exe" 
+
+function update-disk2vhd {
+    param(
+        [string]$exeName, 
+        [string]$liveUrl
+    )
+    try {
+        if(Test-Path -Path ".\$($exeName).exe") {        
+            $webClient = [System.Net.WebClient]::new()
+            $liveHash = (Get-FileHash -InputStream ($webClient.OpenRead($liveUrl))).Hash
+            Write-Host "Live version filehash: $($liveHash)"
+            $localHash = (Get-FileHash -Path "$($exeName).exe").Hash
+            Write-Host "Local version filehash: $($localHash)"
+
+            if($liveHash -eq $localHash) {
+                Write-Host "Local and live version filehases match. Skipping download."
+            }
+            else {
+                Write-Host -ForegroundColor Yellow "Local and live version filehases don't match. Downloading live version."
+                Write-Host -ForegroundColor Cyan "HINT: You can skip this check with -NoUpdate"
+                Write-Host "Renaming local version to disk2vhd-old.exe"
+                Rename-Item -Path ".\$($exeName)" -NewName ".\$($exeName)-old.exe"
+                Write-Host "Downloading live version"                 
+                Invoke-WebRequest -Uri $liveUrl -OutFile ".\$($exeName).exe"
+            }
+        }
+        else {
+            Write-Host "Local version not found. Downloading from live.sysinternals.com"
+            Invoke-WebRequest -Uri $liveUrl -OutFile ".\$($exeName).exe"
+        }        
+    }
+    catch {
+        Write-Host "Error updating.`n$($_.Error)"
+    }
+}
 
 if($NoUpdate) { Write-Host "Skipping update check" }
 else {
     Write-Host -ForegroundColor Cyan "Testing connection to live.sysinternals.com"
     if(Test-Connection "live.sysinternals.com" -Count 2) {
         Write-Host -ForegroundColor Green "Success!"
-        if(Test-Path -Path ".\disk2vhd.exe") {
-            # TODO - put this all in a try in case the download fails
-            $webClient = [System.Net.WebClient]::new()
-            $disk2VHDInternetHash = (Get-FileHash -InputStream ($webClient.OpenRead($disk2VHDUrl))).Hash
-            Write-Host "Live version filehash: $($disk2VHDInternetHash)"
-            $disk2VHDLocalHash = (Get-FileHash -Path ".\disk2vhd.exe").Hash
-            Write-Host "Local version filehash: $($disk2VHDLocalHash)"
-
-            else {
-                if($disk2VHDInternetHash -eq $disk2VHDLocalHash) {
-                    Write-Host "Local and live version filehases match. Skipping download."
-                }
-                else {
-                    Write-Host -ForegroundColor Yellow "Local and live version filehases don't match. Downloading live version."
-                    Write-Host -ForegroundColor Cyan "HINT: You can skip this check with -NoUpdate"
-                    Write-Host "Renaming local version to disk2vhd-old.exe"
-                    Rename-Item -Path ".\disk2vhd.exe" -NewName ".\disk2vhd-old.exe"
-                    Write-Host "Downloading live version"                 
-                    Invoke-WebRequest -Uri $disk2VHDUrl -OutFile ".\disk2vhd.exe"
-                }
-            }         
-        }
-        else {
-            Write-Host "Local version not found. Downloading from live.sysinternals.com"
-            Invoke-WebRequest -Uri $disk2VHDUrl -OutFile ".\disk2vhd.exe"
-        }
+        # update-disk2vhd -exeName "disk2vhd" -liveUrl $disk2VHDUrl
+        update-disk2vhd -exeName "disk2vhd64" -liveUrl $disk2VHD64Url
     }
     else {
         Write-Host -ForegroundColor Yellow "Can't connect to live.sysinternals.com. Skipping update."
@@ -83,7 +95,7 @@ if((Get-Volume $destinationDrive).DriveType -eq "Fixed") {
 #TODO - check if VHDs exist on destination drive. add switch to use machine name without timestamp for filename and any name conflicts. 
 
 $VHDPath = "$($destinationDrive):\VHDs"
-$VHDFilename = "$($VHDPath)\$($env:COMPUTERNAME)-$(Get-Date -Format "yyyyMMdd-hhmmss").vhd"
+$VHDFilename = "$($VHDPath)\$($env:COMPUTERNAME)-$(Get-Date -Format "yyyyMMdd-hhmmss").vhdx"
 Write-Host "Checking if VHD path ($($VHDPath)) exists"
 if(Test-Path $VHDPath) { Write-Host -ForegroundColor Green "$($VHDPath) exists." }
 else {
@@ -95,4 +107,4 @@ Write-Host "Source Drive: $($sourceDrive)"
 Write-Host "VHD: $($VHDFilename)"
 Write-Host "Starting disk2vhd"
 Write-Host "/accepteula","$($sourceDrive): $($VHDFilename)"
-Start-Process ".\disk2vhd.exe" -ArgumentList "/accepteula","$($sourceDrive): $($VHDFilename)" -Wait
+Start-Process ".\disk2vhd64.exe" -ArgumentList "/accepteula","-c $($sourceDrive): $($VHDFilename)" -Wait
