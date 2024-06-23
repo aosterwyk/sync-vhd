@@ -20,6 +20,9 @@ All switches are optional. The script will default to the OS drive as a source a
 
 **sourceDrive** <drive letter>: Override default (OS, usually C) source drive
 
+### Shortcut Example
+`powershell.exe -executionpolicy bypass -file .\sync-vhd.ps1 -command -destinationDrive d`
+
 ## Support
 
 [Discord server](https://discord.gg/QNppY7T) or DM `VariXx`
