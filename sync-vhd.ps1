@@ -2,7 +2,8 @@ param(
     [switch]$NoUpdate = $false,
     [string]$destinationDrive,
     [string]$destinationPath,
-    [string]$sourceDrive
+    [string]$sourceDrive,
+    [switch]$help
 )
 
 # TODO - explain switches and add help switch
@@ -11,6 +12,19 @@ Write-Host "Use at your own risk. The author cannot be held responsible if you b
 
 $disk2VHDUrl = "https://live.sysinternals.com/disk2vhd.exe" 
 $disk2VHD64Url = "https://live.sysinternals.com/disk2vhd64.exe" 
+
+if($help) {
+    Write-Host -ForegroundColor Yellow "HELP" 
+    Write-Host -ForegroundColor Cyan "`n-NoUpdate"
+    Write-Host "Disable checking for disk2vhd updates"
+    Write-Host -ForegroundColor Cyan "`n-destinationDrive <drive letter>"
+    Write-Host "Where to save VHD file. This will default to '<drive letter>:\VHDs'.`nYou do not need to use the destinationPath switch with option."
+    Write-Host -ForegroundColor Cyan "`n-destinationPath <path>"
+    Write-Host "Override default ('<drive letter>:\VHDs') path"
+    Write-Host -ForegroundColor Cyan "`n-sourceDrive <drive letter>"
+    Write-Host "Override default (OS, usually C) source drive"
+    exit
+}
 
 function update-disk2vhd {
     param(
@@ -83,6 +97,10 @@ else {
         if($drive.DriveLetter -lt 1) { continue } # skip drives without letter
         Write-Host "$($drive.DriveLetter): $($drive.FileSystemLabel) ($([math]::round($Drive.size / 1GB, 2))GB)"
         $USBDriveCount++
+    }
+    if($USBDriveCount -eq 0) {
+        Write-Host -ForegroundColor Red "No drives found. Exiting"
+        exit
     }
     if($USBDriveCount -eq 1) { $drivePromptMessage = "Enter a destination drive letter (you probably want $($USBDrives[1].DriveLetter))" }
     else { $drivePromptMessage = "Enter a destination drive letter" }
